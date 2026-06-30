@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Eilik Robot Eyes</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Flubber required for eilik-morph.js path interpolation -->
+    <script src="https://cdn.jsdelivr.net/npm/flubber@0.4.2/build/flubber.min.js"></script>
+</head>
+<body class="robot-screen">
+    <!-- Hidden video element (required by script.js FaceTracker stub) -->
+    <video id="camFeed" style="display:none;" playsinline muted></video>
+    
+    <div class="screen">
+        <div class="face eilik robo-drive" id="robotFace" data-emotion="neutral">
+            <div class="eilik__display">
+                <div class="face__move">
+                    <svg class="eilik-face" viewBox="0 0 200 160" preserveAspectRatio="xMidYMid meet">
+                        <!-- Morph paths (used by eilik-morph.js) -->
+                        <path id="eyeLMorph" class="eilik-morph" />
+                        <path id="eyeRMorph" class="eilik-morph" />
+                        <path id="mouthMorph" class="eilik-morph eilik-morph--mouth" />
+                        
+                        <!-- Legacy shapes (hidden when morph active via .eilik-morph-on) -->
+                        <g class="shapes-legacy">
+                            <g class="eye-l">
+                                <ellipse class="shape shape--oval" cx="56" cy="72" rx="18" ry="18"/>
+                                <path class="shape shape--bean" d="M38,72 Q56,54 74,72 Q56,90 38,72 Z"/>
+                            </g>
+                            <g class="eye-r">
+                                <ellipse class="shape shape--oval" cx="144" cy="72" rx="18" ry="18"/>
+                                <path class="shape shape--bean" d="M126,72 Q144,54 162,72 Q144,90 126,72 Z"/>
+                            </g>
+                            <g class="mouth-g">
+                                <path class="shape shape--smile-mouth" d="M70,118 Q100,138 130,118"/>
+                            </g>
+                        </g>
+                        
+                        <!-- Kiss heart animation target -->
+                        <g class="kiss-fx">
+                            <path id="kissHeartFly" class="kiss-heart kiss-heart--fly" 
+                                  d="M100,132 C88,118 72,124 100,142 C128,124 112,118 100,132 Z"/>
+                        </g>
+                        
+                        <!-- Love sparkles -->
+                        <g class="love-fx">
+                            <text class="love-sparkle" x="40" y="60">♥</text>
+                            <text class="love-sparkle" x="150" y="55">♥</text>
+                            <text class="love-sparkle" x="60" y="45">♥</text>
+                            <text class="love-sparkle" x="130" y="50">♥</text>
+                        </g>
+                        
+                        <!-- Blush lines -->
+                        <g class="blush-g">
+                            <line x1="30" y1="88" x2="42" y2="88"/>
+                            <line x1="30" y1="94" x2="42" y2="94"/>
+                            <line x1="158" y1="88" x2="170" y2="88"/>
+                            <line x1="158" y1="94" x2="170" y2="94"/>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load ALL modules in exact dependency order -->
+    <script src="roboeyes-dom.js"></script>
+    <script src="eilik-morph.js"></script>
+    <script src="eilik-animations.js"></script>
+    <script src="eilik-kiss.js"></script>
+    <script src="eilik-love.js"></script>
+    <script src="face-track.js"></script>
+    <script src="script.js"></script>
+    
+    <script>
+        // Override FaceTracker to use ROS /face/center instead of webcam
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.RobotFace && window.RobotFace.robo) {
+                const robo = window.RobotFace.robo;
+                
+                // ✅ CRITICAL: Force eyes open immediately to prevent squash bug
+                robo.setBlinkPaused(true);
+                document.getElementById('robotFace').style.setProperty('--eye-open-l', '1');
+                document.getElementById('robotFace').style.setProperty('--eye-open-r', '1');
+                
+                console.log('[ROS Bridge] Eilik system initialized, waiting for /face/center...');
+            }
+        });
+        
+        // Expose safe gaze API for Electron renderer.js
+        window.setEyeGaze = function(nx, ny) {
+            const safeNx = isNaN(nx) ? 0 : Math.max(-1, Math.min(1, nx));
+            const safeNy = isNaN(ny) ? 0 : Math.max(-1, Math.min(1, ny));
+            
+            if (window.RobotFace) {
+                // Use the full RobotFace.applyGaze which handles fullscreen scaling + pupil + position
+                window.RobotFace.robo.setPupilGaze(safeNx, safeNy);
+                const scale = document.body.classList.contains('robot-screen') ? 1 : 0.38;
+                window.RobotFace.robo.lookNormalized(safeNx * scale, safeNy * scale);
+            }
+        };
+    </script>
+</body>
+</html>

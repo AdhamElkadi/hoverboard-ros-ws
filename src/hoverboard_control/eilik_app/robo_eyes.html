@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Robot Eyes</title>
+    <link rel="stylesheet" href="eilik-face.css">
+</head>
+<body class="robot-screen">
+    <div class="screen">
+        <div class="face eilik robo-drive" id="robotFace" data-emotion="neutral">
+            <div class="eilik__display">
+                <div class="face__move">
+                    <svg class="eilik-face" viewBox="0 0 200 160" preserveAspectRatio="xMidYMid meet">
+                        <!-- Left Eye -->
+                        <g class="eye-l">
+                            <ellipse class="shape shape--oval" cx="56" cy="72" rx="18" ry="18"/>
+                            <ellipse class="shape shape--dome" cx="56" cy="72" rx="18" ry="14"/>
+                            <path class="shape shape--bean" d="M38,72 Q56,54 74,72 Q56,90 38,72 Z"/>
+                            <path class="shape shape--sad-droopy" d="M38,68 Q56,86 74,68"/>
+                            <path class="shape shape--danger" d="M38,64 L74,80 M38,80 L74,64"/>
+                            <path class="shape shape--arc-up" d="M38,78 Q56,58 74,78"/>
+                            <path class="shape shape--laugh-arc1" d="M38,78 Q56,58 74,78"/>
+                            <path class="shape shape--laugh-arc2" d="M38,78 Q56,58 74,78"/>
+                            <path class="shape shape--heart" d="M56,82 C56,82 42,68 42,58 C42,50 50,46 56,54 C62,46 70,50 70,58 C70,68 56,82 56,82 Z"/>
+                            <circle class="shape shape--magnify-fill" cx="56" cy="72" r="14"/>
+                            <circle class="shape shape--magnify" cx="56" cy="72" r="14"/>
+                        </g>
+                        <!-- Right Eye -->
+                        <g class="eye-r">
+                            <ellipse class="shape shape--oval" cx="144" cy="72" rx="18" ry="18"/>
+                            <ellipse class="shape shape--dome" cx="144" cy="72" rx="18" ry="14"/>
+                            <path class="shape shape--bean" d="M126,72 Q144,54 162,72 Q144,90 126,72 Z"/>
+                            <path class="shape shape--sad-droopy" d="M126,68 Q144,86 162,68"/>
+                            <path class="shape shape--danger" d="M126,64 L162,80 M126,80 L162,64"/>
+                            <path class="shape shape--arc-up" d="M126,78 Q144,58 162,78"/>
+                            <path class="shape shape--laugh-arc1" d="M126,78 Q144,58 162,78"/>
+                            <path class="shape shape--laugh-arc2" d="M126,78 Q144,58 162,78"/>
+                            <path class="shape shape--heart" d="M144,82 C144,82 130,68 130,58 C130,50 138,46 144,54 C150,46 158,50 158,58 C158,68 144,82 144,82 Z"/>
+                            <circle class="shape shape--magnify-fill" cx="144" cy="72" r="14"/>
+                            <circle class="shape shape--magnify" cx="144" cy="72" r="14"/>
+                            <path class="shape shape--chevron" d="M134,64 L144,78 L154,64"/>
+                        </g>
+                        <!-- Mouth -->
+                        <g class="mouth-g">
+                            <path class="shape shape--smile-mouth" d="M70,118 Q100,138 130,118"/>
+                            <path class="shape shape--arc-smile" d="M70,118 Q100,138 130,118"/>
+                            <path class="shape shape--laugh-mouth" d="M70,112 Q100,148 130,112 Z"/>
+                            <path class="shape shape--laugh-mouth-hl" d="M78,116 Q100,140 122,116"/>
+                            <path class="shape shape--wave" d="M70,118 Q85,112 100,118 Q115,124 130,118"/>
+                            <path class="shape shape--o" d="M88,118 C88,108 112,108 112,118 C112,128 88,128 88,118 Z"/>
+                            <line class="shape shape--line" x1="75" y1="118" x2="125" y2="118"/>
+                            <path class="shape shape--talk-flat" d="M75,118 L125,118"/>
+                            <path class="shape shape--talk-open" d="M80,112 C80,102 120,102 120,112 C120,128 80,128 80,112 Z"/>
+                            <path class="shape shape--love-mouth" d="M85,118 C85,108 115,108 115,118 C115,128 100,138 100,138 C100,138 85,128 85,118 Z"/>
+                        </g>
+                        <!-- Blush -->
+                        <g class="blush-g">
+                            <line x1="30" y1="88" x2="42" y2="88"/>
+                            <line x1="30" y1="94" x2="42" y2="94"/>
+                            <line x1="158" y1="88" x2="170" y2="88"/>
+                            <line x1="158" y1="94" x2="170" y2="94"/>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="robo_eyes.js"></script>
+    <script>
+        const eyes = new RoboEyesDom(document.getElementById('robotFace'));
+        eyes.begin(60);
+        eyes.setAutoblinker(true, 3, 2);
+
+        // ✅ EXPOSE GLOBAL API FOR ELECTRON ROS BRIDGE
+        window.setEyeGaze = function(nx, ny) {
+            eyes.lookNormalized(nx, ny);
+        };
+    </script>
+</body>
+</html>
