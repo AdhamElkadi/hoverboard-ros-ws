@@ -44,6 +44,8 @@ setup(
              'depth_esp_controller = hoverboard_control.depth_esp_controller:main',
              'face_stop_controller = hoverboard_control.face_stop_controller:main',
              'hybrid_controller = hoverboard_control.hybrid_controller:main',
+             'ultrasonic_bridge = hoverboard_control.ultrasonic_bridge:main',
+             'fusion_controller = hoverboard_control.fusion_controller:main',
             ],
     },
 )
