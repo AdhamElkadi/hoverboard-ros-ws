@@ -1,36 +1,30 @@
-# Project Dependencies & Installation Guide
+# 📦 Dependencies & Installation Guide
 
-This document lists all software dependencies required to build and run the Hoverboard Face Tracking + Eilik Expression system. All instructions are validated for **Ubuntu 24.04 (Noble Numbat)** with Python 3.12.
+This document contains **everything** required to set up the Hoverboard ROS 2 Autonomous Control System, including system requirements, ROS packages, Azure Kinect drivers, Python libraries, ESP32 firmware setup, hardware permissions, build verification, and comprehensive troubleshooting.
 
----
+## 1. System Requirements
 
-## 1. System-Level Prerequisites
-Install these via `apt` before setting up Python or Node.js environments.
+| Component | Requirement | Notes |
+| :--- | :--- | :--- |
+| **Operating System** | Ubuntu 22.04 LTS | Required for ROS 2 Humble compatibility |
+| **ROS Distribution** | ROS 2 Humble Hawksbill | Primary middleware framework |
+| **Python Version** | Python 3.10+ | Required for MediaPipe and CV Bridge |
+| **Build Tool** | colcon | Standard ROS 2 build system |
+| **CMake** | CMake 3.16+ | Required for building ROS packages |
+| **Git** | Git 2.35+ | For version control and branching |
+
+## 2. ROS 2 Packages
+
+Install these core ROS 2 packages via `apt`:
 
 ```bash
-sudo apt update && sudo apt install -y \
-  python3-pip \
-  python3-venv \
-  nodejs \
-  npm \
-  git \
-  colcon-common-extensions \
-  ros-dev-tools \
-  libopencv-dev \
-  ffmpeg \
-  libusb-1.0-0-dev \
-  screen
-# Python dependencies
-python3 -c "import cv2; print('OpenCV:', cv2.__version__)"
-python3 -c "import mediapipe; print('MediaPipe OK')"
-python3 -c "import serial; print('PySerial OK')"
-
-# Node.js dependencies
-cd ~/ros2_ws/src/hoverboard_control/eilik_app
-node -e "const pkg = require('./package.json'); console.log('Electron:', pkg.dependencies.electron)"
-
-# Serial port access
-ls -la /dev/ttyUSB* | grep -q "dialout" && echo "Serial permissions OK" || echo "Fix: sudo usermod -aG dialout $USER && reboot"
-
-# ROS 2 workspace
-colcon list --packages-select hoverboard_control
+sudo apt update
+sudo apt install -y \
+    ros-humble-usb-cam \
+    ros-humble-cv-bridge \
+    ros-humble-geometry-msgs \
+    ros-humble-sensor-msgs \
+    ros-humble-launch \
+    ros-humble-launch-ros \
+    ros-humble-rqt* \
+    python3-rosdep
