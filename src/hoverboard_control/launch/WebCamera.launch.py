@@ -10,7 +10,7 @@ def generate_launch_description():
             executable='usb_cam_node_exe',
             name='usb_cam',
             parameters=[{
-                'video_device': '/dev/video2',
+                'video_device': '/dev/video0',
                 'image_width': 640,
                 'image_height': 480,
                 'framerate': 30.0,
@@ -30,19 +30,5 @@ def generate_launch_description():
             name='face_detector',
             output='screen'
         ),
-
-        TimerAction(
-            period= 1.0,
-            actions=[
-        # 3. Face Search Controller (Behavior/Motor Control)
-        Node(
-            package='hoverboard_control',
-            executable='face_search_controller',
-            name='face_search_controller',
-            output='screen'
-            
-            )
-        ]
-            )
     
     ])

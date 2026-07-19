@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PointStamped
 from sensor_msgs.msg import Image
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, String
 from cv_bridge import CvBridge
 import serial
 import time
@@ -20,6 +20,11 @@ class FusionController(Node):
         
         # Publisher for ultrasonic data
         self.pub_rear = self.create_publisher(Float32, '/sensor/ultrasonic/rear', 10)
+        
+        # ── Eilik Emotion Publisher ──
+        self.eilik_pub = self.create_publisher(String, '/eilik/command', 10)
+        self.last_emotion = ''
+        self.first_lock_after_roam = True  # For "excited" on first face lock
         
         # Reactive Sensor State
         self.front_dist_mm = 0
@@ -56,6 +61,28 @@ class FusionController(Node):
         # Synchronized timers
         self.control_timer = self.create_timer(0.1, self.control_loop)       
         self.sensor_timer = self.create_timer(0.08, self.read_sensor_data)   
+
+        # ── Initial Eilik Emotion ──
+        self.set_eilik_emotion('neutral')
+        self.get_logger().info("🎭 Eilik emotion system ready")
+
+    # ═══════════════════════════════════════════════════════════
+    # EILIK EMOTION CONTROL (only publishes on change)
+    # ═══════════════════════════════════════════════════════════
+
+    def set_eilik_emotion(self, emotion: str):
+        """Publish emotion to Eilik app only when it changes."""
+        if emotion == self.last_emotion:
+            return
+        self.last_emotion = emotion
+        msg = String()
+        msg.data = emotion
+        self.eilik_pub.publish(msg)
+        self.get_logger().info(f"🎭 Eilik → {emotion}")
+
+    # ═══════════════════════════════════════════════════════════
+    # CALLBACKS (unchanged)
+    # ═══════════════════════════════════════════════════════════
 
     def face_callback(self, msg):
         self.last_face_time = self.get_clock().now()
@@ -105,6 +132,10 @@ class FusionController(Node):
             except Exception:
                 pass
 
+    # ═══════════════════════════════════════════════════════════
+    # CONTROL LOOP (your exact logic + Eilik emotions)
+    # ═══════════════════════════════════════════════════════════
+
     def control_loop(self):
         if not self.ser: 
             return
@@ -122,6 +153,7 @@ class FusionController(Node):
         if self.rear_dist_cm <= STOP_THRESHOLD and self.rear_dist_cm > 0:
             cmd = 'S'
             reason = f"REAR_STOP({self.rear_dist_cm:.0f}cm)"
+            self.set_eilik_emotion('surprised')  # 🎭
             self._send_command(cmd, reason, now)
             return  
 
@@ -129,12 +161,15 @@ class FusionController(Node):
             if self.rear_dist_cm <= STOP_THRESHOLD and self.rear_dist_cm > 0:
                 cmd = 'S'
                 reason = f"TRAPPED(F:{self.front_dist_mm}mm|R:{self.rear_dist_cm:.0f}cm)"
+                self.set_eilik_emotion('danger')  # 🎭
             elif self.rear_dist_cm >= BACKUP_THRESHOLD:
                 cmd = 'B'
                 reason = f"BACKING_UP(Rear:{self.rear_dist_cm:.0f}cm>={BACKUP_THRESHOLD:.0f}cm)"
+                self.set_eilik_emotion('surprised')  # 🎭
             else:
                 cmd = 'S'
                 reason = f"HOLDING(Rear:{self.rear_dist_cm:.0f}cm in buffer zone)"
+                self.set_eilik_emotion('surprised')  # 🎭
             self._send_command(cmd, reason, now)
             return  
 
@@ -150,33 +185,46 @@ class FusionController(Node):
                 self.state = "SEARCHING"
                 self.search_start_time = now
                 self.search_direction = 'R' if self.last_face_x < 320 else 'L'
+                self.set_eilik_emotion('confused')  # 🎭
                 self.get_logger().info(f"🔍 Face lost → SEARCHING {self.search_direction} (last_x={self.last_face_x:.0f})")
             else:
                 cmd = 'S'
                 reason = f"TRACKING(x={self.last_face_x:.0f}|lost={self.face_lost_count}/{self.FACE_LOST_THRESHOLD})"
+                self.set_eilik_emotion('happy')  # 🎭
 
         elif self.state == "SEARCHING":
             # ✅ IMMEDIATE STOP & TRACK IF FACE REAPPEARS DURING SEARCH
             if self.face_lost_count == 0:
                 self.state = "TRACKING"
+                self.set_eilik_emotion('happy')  # 🎭
                 self.get_logger().info(f"✅ Face found during search → TRACKING (x={self.last_face_x:.0f})")
             elif elapsed_search >= 5.0:
                 # Search complete without finding face → Return to roaming
                 self.state = "ROAMING"
                 self.face_lost_count = 0
+                self.first_lock_after_roam = True  # 🎭 Reset for next "excited"
+                self.set_eilik_emotion('neutral')  # 🎭
                 self.get_logger().info("⏱️ 5s search complete → ROAMING")
             else:
                 # Continue searching in set direction
                 cmd = self.search_direction
                 reason = f"SEARCHING({self.search_direction}|{elapsed_search:.1f}s/5.0s)"
+                self.set_eilik_emotion('confused')  # 🎭
 
         elif self.state == "ROAMING":
             if self.face_lost_count == 0 and elapsed_since_face < 0.1:
                 self.state = "TRACKING"
+                # 🎭 Excited on FIRST face lock after roaming!
+                if self.first_lock_after_roam:
+                    self.set_eilik_emotion('excited')
+                    self.first_lock_after_roam = False
+                else:
+                    self.set_eilik_emotion('happy')
                 self.get_logger().info(f"✅ Face confirmed → TRACKING (x={self.last_face_x:.0f})")
             else:
                 cmd = 'F'
                 reason = "ROAMING"
+                self.set_eilik_emotion('neutral')  # 🎭
 
         self._send_command(cmd, reason, now)
 
@@ -202,6 +250,13 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
+        # 🎭 Show sleepy face on shutdown
+        try:
+            msg = String()
+            msg.data = 'sleepy'
+            node.eilik_pub.publish(msg)
+        except Exception:
+            pass
         if node.ser and node.ser.is_open:
             try:
                 node.ser.close()
