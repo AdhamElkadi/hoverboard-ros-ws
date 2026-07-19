@@ -10,7 +10,7 @@ def generate_launch_description():
             executable='usb_cam_node_exe',
             name='usb_cam',
             parameters=[{
-                'video_device': '/dev/video2',
+                'video_device': '/dev/video0',
                 'image_width': 640,
                 'image_height': 480,
                 'framerate': 30.0,
@@ -46,8 +46,8 @@ def generate_launch_description():
         # 4. Hybrid Controller (The Brain)
         Node(
             package='hoverboard_control',
-            executable='hybrid_controller',
-            name='hybrid_controller',
+            executable='fusion_controller',
+            name='fusion_controller',
             output='screen'
         )
     ])
