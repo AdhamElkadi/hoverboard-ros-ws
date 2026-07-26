@@ -47,6 +47,7 @@ setup(
              'ultrasonic_bridge = hoverboard_control.ultrasonic_bridge:main',
              'fusion_controller = hoverboard_control.fusion_controller:main',
              'eilik_bridge = hoverboard_control.eilik_bridge:main',
+             'web_controller = hoverboard_control.web_controller:main',
             ],
     },
 )
