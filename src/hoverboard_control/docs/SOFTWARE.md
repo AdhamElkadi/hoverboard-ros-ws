@@ -1,42 +1,41 @@
-## Core Modules
+# 💻 Software Structure
 
-### `face_search_controller.py`
-**Purpose:** Autonomous face search and tracking motor control  
-**Key Features:**
--   State machine with `is_searching` and `search_timed_out` flags to prevent rapid-fire start/stop cycles
--   5-second search timeout after face loss; 1.5-second grace period before initiating search
--   Continuous ASCII command stream (`L\n`, `R\n`, `S\n`) at 30Hz to satisfy ESP32 500ms timeout
--   Remembers last-known face position to determine search direction
+## ROS 2 Nodes
 
-### `esp32_hoverboard_face_tracking.ino`
-**Purpose:** Serial bridge between Python ROS node and STM32 hoverboard controller  
-**Key Features:**
--   Dual-mode parser: Accepts both ASCII chars (`L/R/S`) and raw binary packets
--   Silent keep-alive: Sends valid neutral packets every 100ms to prevent STM32 fault beeps
--   Rate limiting: Applies `STEER_RATE_LIMIT=60` to smooth motor transitions
--   Safety timeout: Forces STOP if no command received for 500ms
+### `fusion_controller.py`
+*   **Role:** Central decision maker.
+*   **Subscribers:** `/face/center`, `/depth/image_raw`, `/sensor/ultrasonic/rear`
+*   **Logic:** 
+    *   Priority 1: Rear Safety (Stop if wall behind).
+    *   Priority 2: Front Obstacle (Back up if clear behind).
+    *   Priority 3: Face Tracking (Stop/Search/Roam).
+*   **Publisher:** Serial Command Stream to ESP32.
 
-### Eilik Expression Engine (Customized)
-Modified from Shutter Studio's official Robot Eyes Hub to integrate with ROS face tracking.
+### `ultrasonic_bridge.py`
+*   **Role:** Middleware between ESP32 and ROS.
+*   **Function:** Reads `U:dist` from serial, publishes `/sensor/ultrasonic/rear`.
+*   **Rate:** 20Hz.
 
-#### Modified Files
-| File | Original Name | Changes Made |
-| :--- | :--- | :--- |
-| `style.css` | `eilik-face.css` | Renamed; adjusted `--face-zoom: 0.72` for fullscreen robot display; added `.robot-screen` overrides |
-| `script.js` | N/A | Added ROS bridge override in `setFaceTrack()`; forced eyes open on init via `forceEyesOpen()`; implemented `gazeLayoutScale()` returning 1.0 for fullscreen |
-| `roboeyes-dom.js` | N/A | Integrated with `window.setEyeGaze` API; exposed `RoboEyesDom` globally; added safety clamps for gaze coordinates |
-| `renderer.js` | N/A | Subscribes to `/face/center`; normalizes pixel coords to [-1,1]; applies mirror inversion on X-axis |
+### `face_detector.py`
+*   **Role:** Visual perception.
+*   **Library:** MediaPipe FaceMesh.
+*   **Output:** Normalized face center coordinates.
 
-#### Unmodified Modules (Loaded As-Is)
--   `eilik-morph.js`: SVG path interpolation via Flubber library (15+ emotions)
--   `eilik-animations.js`: Transient reaction animations (pop, jiggle, laugh-bounce)
--   `eilik-kiss.js`: Flying heart animation triggered on "kiss" emotion
--   `eilik-love.js`: Heart-eye pulse + sparkle FX on "love" emotion
--   `face-track.js`: Webcam face detector stub (overridden by ROS bridge in production)
+## ESP32 Firmware (`esp32_hoverboard_fusion.ino`)
+*   **Non-Blocking Sensors:** Uses `pulseIn(..., 20000)` to prevent freezing.
+*   **Debounce Logic:** Requires 3 consecutive close readings before triggering safety stop.
+*   **Keep-Alive:** Sends motor packets every 100ms regardless of new commands.
 
-## Dependencies & Versions
-Install these exact versions to avoid compatibility issues:
-
-```bash
-pip3 install opencv-python==4.9.0 mediapipe==0.10.14 pyserial==3.5 --break-system-packages
-npm install electron@28.0 rclnodejs@2.0 flubber@0.4.2
+## File Structure
+```text
+hoverboard_control/
+├── hoverboard_control/
+│   ├── fusion_controller.py
+│   ├── ultrasonic_bridge.py
+│   ├── face_detector.py
+│   └── azure_kinect_publisher.py
+├── launch/
+│   ├── advanced_autonomy.launch.py
+│   └── camera.launch.py
+└── esp32/
+    └── esp32_hoverboard_fusion.ino
