@@ -1,39 +1,36 @@
 ## Startup Sequence
-Execute in this exact order to ensure all subsystems initialize correctly:
 
-1.  **Source Workspace & Launch Perception**
-    ```bash
-    source ~/ros2_ws/install/setup.bash
-    ros2 launch hoverboard_control camera.launch.py
-    ```
-2.  **Verify Face Detection Output**
-    ```bash
-    ros2 topic echo /face/center --once
-    ```
-    Expected: Valid `PointStamped` with x/y within [0,640] / [0,480]. If empty, check camera permissions and lighting.
-3.  **Start ESP32 Serial Bridge**
-    ```bash
-    # Verify port exists first
-    ls /dev/ttyUSB*
-    # Fix permissions if needed
-    sudo usermod -aG dialout $USER && sudo chmod 666 /dev/ttyUSB*
-    # Log out/in required for group change
-    ```
-4. **Start Face Detector Node**
-    '''bash
-    cd ~/ros2_ws 
-    ros2 run hoverboard_control face_detector
-    '''
-5.  **Launch Electron Display App**
-    ```bash
-    cd ~/ros2_ws/src/hoverboard_control/eilik_app
-    nvm use 20 > /dev/null 2>&1
-    npm start
-    ```
-6.  **Start Face Search Controller**
-    ```bash
-    ros2 run hoverboard_control face_search_controller
-    ```
+### Option A: Manual Control Stack (Primary)
+Starts Flask Web UI (port 5000), `manual_controller`, `face_detector`, `eilik_bridge`, and Electron Eilik eyes:
+```bash
+source ~/ros2_ws/install/setup.bash
+ros2 launch hoverboard_control WebCamera.launch.py
+```
+Open browser on phone/laptop connected to hotspot: `http://<laptop-ip>:5000`
+
+### Option B: Autonomous Control Stack
+Starts `fusion_controller`, `web_controller`, and `azure_kinect_publisher`:
+```bash
+source ~/ros2_ws/install/setup.bash
+ros2 launch hoverboard_control camera.launch.py
+```
+
+> ⚠️ **Note:** Do NOT launch both stacks simultaneously as both web controllers bind port 5000.
+
+## Diagnostic Commands
+
+1. **Verify Base Commands from Web UI:**
+   ```bash
+   ros2 topic echo /app_command std_msgs/msg/String
+   ```
+2. **Verify Head Commands from Web UI:**
+   ```bash
+   ros2 topic echo /head/command std_msgs/msg/String
+   ```
+3. **Verify Face Tracking Point:**
+   ```bash
+   ros2 topic echo /face/center --once
+   ```
 
 ## Troubleshooting Matrix
 
@@ -41,12 +38,10 @@ Execute in this exact order to ensure all subsystems initialize correctly:
 | :--- | :--- | :--- | :--- |
 | STM32 beeping continuously | Speed=0 or missing keep-alive | Check ESP32 Serial Monitor | Set `TURN_SPEED=50` in ESP32 firmware |
 | Motors don't respond to L/R/S | Wrong serial port or permissions | `ls /dev/ttyUSB*` | `sudo chmod 666 /dev/ttyUSB*` + re-plug cable |
+| Head buttons unresponsive | Wrong launch file or web route error | `curl -i http://localhost:5000/head/U` | Run `WebCamera.launch.py` and hard-refresh browser |
 | Eyes squashed vertically | Bad Y-normalization or NaN | Open Electron DevTools → Console | Verify `CAM_HEIGHT` matches actual camera resolution |
 | Face tracking jittery/spasmodic | Hallucination filters too loose | `ros2 topic echo /face/center` | Increase `min_confidence` to 0.85 in `face_detector.py` |
-| Rapid search start/stop spam | Missing `search_timed_out` flag | Check controller logs | Update `face_search_controller.py` state logic |
-| "BAD FRAME" in ESP32 logs | Checksum mismatch or byte order | Verify Python `struct.pack('<HhhH',...)` | Ensure little-endian `<` prefix and XOR formula |
-| Electron app shows white flash | Missing background color | Check `main.js` | Set `backgroundColor: '#000000'` in BrowserWindow options |
-| Face detector crashes on startup | Missing cv2 dependency | `python3 -c "import cv2"` | `pip3 install opencv-python --break-system-packages` |
+| Port 5000 already in use | Stale Flask process | `ss -ltnp '( sport = :5000 )'` | Kill stale process or launch single stack |
 
 ## Calibration Guide
 

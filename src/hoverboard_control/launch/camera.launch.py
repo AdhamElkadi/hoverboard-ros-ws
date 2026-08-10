@@ -1,13 +1,10 @@
 import os
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import ExecuteProcess, TimerAction
+from launch.actions import ExecuteProcess, TimerAction, Shutdown
 
 def generate_launch_description():
-    # Define the hotspot name here (Change 'MyRobotHotspot' to your actual connection name)
     HOTSPOT_NAME = 'MyRobotHotspot' 
-    
-    # Path to the Eilik Electron app
     EILIK_APP_DIR = os.path.expanduser('~/ros2_ws/src/hoverboard_control/eilik_app')
 
     return LaunchDescription([
@@ -18,11 +15,11 @@ def generate_launch_description():
             name='enable_hotspot'
         ),
 
-        # 2. Wait 5 seconds for the Hotspot to initialize and assign an IP
+        # 2. Wait 5 seconds for Hotspot + Sensors to initialize
         TimerAction(
             period=5.0,
             actions=[
-                # 3. Webcam (Color for Face Tracking)
+                # 3. Webcam - ✅ OPTIMIZED: 15 FPS instead of 30
                 Node(
                     package='usb_cam',
                     executable='usb_cam_node_exe',
@@ -31,7 +28,7 @@ def generate_launch_description():
                         'video_device': '/dev/video2',
                         'image_width': 640,
                         'image_height': 480,
-                        'framerate': 30.0,
+                        'framerate': 60.0,
                         'pixel_format': 'yuyv',
                         'io_method': 'mmap',
                         'autoexposure': True,
@@ -40,7 +37,7 @@ def generate_launch_description():
                     output='screen'
                 ),
                 
-                # 4. Face Detector (Perception)
+                # 4. Face Detector
                 Node(
                     package='hoverboard_control',
                     executable='face_detector',
@@ -48,7 +45,7 @@ def generate_launch_description():
                     output='screen'
                 ),
 
-                # 5. Fusion Controller (The Brain)
+                # 5. Fusion Controller
                 Node(
                     package='hoverboard_control',
                     executable='fusion_controller',
@@ -56,7 +53,7 @@ def generate_launch_description():
                     output='screen'
                 ),
 
-                # 6. Web Controller (For Phone App)
+                # 6. Web Controller
                 Node(
                     package='hoverboard_control',
                     executable='web_controller',
@@ -64,13 +61,22 @@ def generate_launch_description():
                     output='screen'
                 ),
 
-                # 7. ✅ Eilik Eyes App (Electron) - Starts after ROS nodes are ready
+                # 7. Azure Kinect Depth Publisher
+                Node(
+                    package='hoverboard_control',
+                    executable='azure_kinect_publisher',
+                    name='kinect_depth',
+                    output='screen'
+                ),
+
+                # 8. Eilik Eyes App - Master Switch
                 ExecuteProcess(
                     cmd=['npm', 'start'],
                     cwd=EILIK_APP_DIR,
                     shell=True,
                     output='screen',
-                    name='eilik_eyes'
+                    name='eilik_eyes',
+                    on_exit=Shutdown() 
                 )
             ]
         )

@@ -49,6 +49,9 @@ setup(
              'eilik_bridge = hoverboard_control.eilik_bridge:main',
              'web_controller = hoverboard_control.web_controller:main',
              'wifi_connector = hoverboard_control.wifi_connector:main',
-            ],
+           'head_controller = hoverboard_control.head_controller:main',
+           'manual_controller = hoverboard_control.manual_controller:main',
+           'manual_web_controller = hoverboard_control.manual_web_controller:main',
+             ],
     },
 )
