@@ -15,7 +15,7 @@ This is a ROS 2 (Jazzy) teleoperation system for a hoverboard-based robot with a
 | Laptop Webcam | `/dev/video0` | N/A | V4L2 YUYV 640x480@30 | RGB for face detection → Eilik gaze |
 | Azure Kinect | N/A | N/A | Depth only (RGB disabled) | Front obstacle safety only |
 
-> ⚠️ **ESP8266 Head Protocol**: Motors run continuously while commands are received. They stop ONLY when serial commands cease (firmware internal timeout). There are NO explicit stop commands. Lowercase `y`/`u` are NOT stop commands — they behave identically to uppercase.
+> ⚠️ **ESP8266 Head Protocol**: The ROS side sends raw single-byte `U`/`D`/`Y`/`Z`. The committed firmware (`EspCode/espcode/head_esp_code.ino`) keeps motors running until it receives an explicit lowercase stop byte (`u`, `d`, `y`, `z`) and implements NO silence-timeout auto-stop. This contradicts older notes claiming silence stops motors and lowercase duplicates uppercase. Consequence: the web UI "Hold" button (which sends nothing) does not stop the head with current firmware. This contract mismatch is unresolved — see Section 10.
 
 ## 3. ROS 2 Node Architecture
 
@@ -31,7 +31,7 @@ This is a ROS 2 (Jazzy) teleoperation system for a hoverboard-based robot with a
 -   **Flask server** on port 5000 serving HTML/CSS/JS control UI
 -   **Publishes**: `/app_command`, `/head/command`, `/eilik/command`
 -   **Routes**: `/move/<cmd>`, `/head/<cmd>`, `/emotion/<name>`, `/mode`
--   **Head "Hold" button**: Sends NO fetch request (silence triggers ESP8266 auto-stop)
+-   **Head "Hold" button**: Sends NO fetch request. With the committed firmware this does NOT stop motors (no silence timeout exists) — see Section 10
 -   **State polling**: JS polls `/mode` every 1s to update banner
 
 ### Supporting Nodes
@@ -50,7 +50,7 @@ This is a ROS 2 (Jazzy) teleoperation system for a hoverboard-based robot with a
 | :--- | :--- | :--- | :--- |
 | Fwd/Back/Left/Right/Stop | `/move/F` etc. | `/app_command` | `F\n` / `B\n` / `L\n` / `R\n` / `S\n` to ESP32 |
 | Head Up/Down/Left/Right | `/head/U` etc. | `/head/command` | `U` / `D` / `Y` / `Z` (raw byte) to ESP8266 |
-| Head Hold | None (JS only) | None | Stops sending → ESP8266 timeout stops motors |
+| Head Hold | None (JS only) | None | Sends nothing; does NOT stop motors with current firmware (no timeout) |
 | Emotions | `/emotion/<name>` | `/eilik/command` | String to eilik_bridge |
 
 ## 6. Known Issues & Critical Constraints
@@ -94,3 +94,9 @@ All nodes registered under `hoverboard_control` package:
 - Updated `manual_controller.py` with INFO-level head serial-write logging and a warning when the head serial port is unavailable.
 - `python3` AST parsing passed for both manual controller files; `colcon build --packages-select hoverboard_control` passed. The package-wide lint/docstring test suite still has pre-existing failures outside this focused change.
 - Runtime confirmation remains: restart the manual launch, hard-refresh the browser, then verify a head-button click produces a `U`/`D`/`Y`/`Z` Network request and `ros2 topic echo /head/command std_msgs/msg/String` output.
+
+## 10. Critique Panel Review Session (2026-08-23)
+- Ran the `brutal-critique-panel` primary agent against the repo at `test`/`5cce14d`. No ROS nodes and no port-5000 server were active during the review; `/dev/ttyUSB0` and `/dev/ttyUSB1` were present. `colcon test --packages-select hoverboard_control`: 2 failed, 1 skipped.
+- Scores: Embedded 2.0, Architecture 3.0, UI 4.0, DevOps 2.5 — average **2.9/10**.
+- Full findings: `reviews/2026-08-23_13-16-19.md`. Report convention changed this session: future reviews are written as timestamped `<YYYY-MM-DD_HH-MM-SS>.md` files directly in `reviews/` (no per-review subdirectories); the agent instructions were updated to match.
+- Top P0 findings: (1) head firmware has no watchdog or explicit stop path reachable from the UI Hold button; (2) HC-SR04 pulse measurement math in `hoverboard_code.ino` is invalid, so rear-safety telemetry is unreliable; (3) `head_controller.py` targets nonexistent `/dev/ttyUSB2` and assumes a silence-stop the firmware does not implement; (4) package lint gates fail, leaving the declared quality gate red.
