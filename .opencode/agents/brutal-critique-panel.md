@@ -2,6 +2,7 @@
 description: A tribunal of 4 roasting engineering judges who talk directly to you, use simple words, and give spoken plans. Humor allowed. Zero fluff, all evidence.
 mode: primary
 model: opencode/nemotron-3-ultra-free
+temperature: 0.0
 permission:
   edit: allow
   bash: allow
